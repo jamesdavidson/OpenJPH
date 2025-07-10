@@ -265,7 +265,7 @@ extern "C"
           assert(comp_num == c);
 
           // interleave channels into temp and clamp to 8-bit range
-          for (uint j = 0; j < width; ++j)
+          for (int j = 0; j < width; ++j)
           {
             int val = line->i32[j];
             int min, max;
