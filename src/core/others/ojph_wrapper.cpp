@@ -240,19 +240,21 @@ extern "C"
     return ;
   }
 
-  void ojph_pull_j2c_rgba(j2k_struct* j2c, int n, int32_t* dst, int dst_size)
+  void ojph_pull_j2c_rgbi(j2k_struct* j2c, int n, uint8_t* dst, int dst_size)
   {
     ojph::param_siz siz = j2c->codestream.access_siz();
-    int ncomps = siz.get_num_components();
     int width = siz.get_recon_width(0); // assuming all components have the same width
+    int ncomps = siz.get_num_components();
+    assert(ncomps == 4);
+    int outchans = ncomps - 1; // ignore alpha channel
 
     // printf("j2c->codestream.is_planar(): %d\n", j2c->codestream.is_planar());
 
     if (!j2c->codestream.is_planar())
     {
-      int* temp = new int[ncomps * width];
-      int32_t* dst_limit = dst + dst_size / sizeof(int32_t);
-      int stride = ncomps * width * sizeof(int);
+      int stride = outchans * width;
+      uint8_t* temp = new uint8_t[stride];
+      uint8_t* dst_limit = dst + dst_size;
       // printf("stride: %d\n", stride);
       for (int i = 0; i < n; ++i)
       {
@@ -263,6 +265,10 @@ extern "C"
           ojph::line_buf *line = j2c->codestream.pull(comp_num);
           // printf("comp_num: %d\n", comp_num);
           assert(comp_num == c);
+          if (c == 3) // skip alpha channel
+          {
+            continue;
+          }
 
           // interleave channels into temp and clamp to 8-bit range
           for (int j = 0; j < width; ++j)
@@ -273,12 +279,12 @@ extern "C"
             max = 255;
             val = val >= min ? val : min;
             val = val <= max ? val : max;
-            temp[c + j * ncomps] = val;
+            temp[c + j * outchans] = val;
           }
         }
         // copy one row at a time to dst
         memcpy(dst, temp, stride);
-        dst += stride / sizeof(int);
+        dst += stride;
         assert(dst <= dst_limit);
       }
       delete[] temp;
